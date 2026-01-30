@@ -21,21 +21,58 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Just grabbing users, filtering if search term is present.
 if ($action === 'fetch_all' && $method === 'GET') {
     $search = $_GET['search'] ?? '';
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+    $offset = ($page - 1) * $limit;
+
+    // Base query for counting
+    $countSql = "SELECT COUNT(*) as total FROM users";
+    $params = [];
+    $types = "";
+
+    if ($search) {
+        $countSql .= " WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?";
+        $term = "%$search%";
+        $params = [$term, $term, $term];
+        $types = "sss";
+    }
+
+    // Get total count
+    $stmt = $conn->prepare($countSql);
+    if ($search) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $totalResult = $stmt->get_result()->fetch_assoc();
+    $total = $totalResult['total'];
+    $stmt->close();
+
+    // Main query for data
     $sql = "SELECT * FROM users";
-    
     if ($search) {
         $sql .= " WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?";
     }
-    $sql .= " ORDER BY created_at DESC";
+    $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    
+    // Add limit/offset params
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= "ii";
 
     $stmt = $conn->prepare($sql);
-    if ($search) {
-        $term = "%$search%";
-        $stmt->bind_param("sss", $term, $term, $term);
-    }
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
-    echo json_encode(['success' => true, 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+
+    echo json_encode([
+        'success' => true, 
+        'data' => $data,
+        'total' => $total,
+        'page' => $page,
+        'limit' => $limit,
+        'totalPages' => ceil($total / $limit)
+    ]);
     exit;
 }
 

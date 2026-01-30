@@ -11,6 +11,7 @@ $(document).ready(function() {
 
     // Search
     $('#search').on('input', function() {
+        currentPage = 1; // Reset to page 1 on search
         fetchUsers($(this).val());
     });
     
@@ -19,6 +20,8 @@ $(document).ready(function() {
 });
 
 var modal = new bootstrap.Modal(document.getElementById('userModal'));
+let currentPage = 1;
+const limit = 10;
 
 function setupInputConstraints() {
     // Just simple length/char checks on keypress/input.
@@ -33,20 +36,25 @@ function setupInputConstraints() {
     });
 }
 
-function fetchUsers(search = '') {
+function fetchUsers(search = '', page = 1) {
     // Hit the backend to get list. If search is there, it filters automatically.
-    $.getJSON('actions.php', { action: 'fetch_all', search: search }, function(res) {
+    $.getJSON('actions.php', { action: 'fetch_all', search: search, page: page, limit: limit }, function(res) {
         let tbody = $('#userTableBody').empty();
         
         if (res.success && res.data.length > 0) {
+            currentPage = res.page; // Sync current page
+            
             res.data.forEach((user, i) => {
                 let img = user.profile_image 
                     ? `uploads/${escapeHtml(user.profile_image)}` 
                     : `assets/images/placeholder.svg`;
                 
+                // Calculate correct S.N. based on page
+                let sn = (res.page - 1) * res.limit + (i + 1);
+
                 let row = `
                     <tr>
-                        <td>${i + 1}</td>
+                        <td>${sn}</td>
                         <td>
                             <img src="${img}" alt="img" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;">
                         </td>
@@ -67,10 +75,58 @@ function fetchUsers(search = '') {
                 `;
                 tbody.append(row);
             });
+            
+            // Render pagination controls
+            renderPagination(res.total, res.page, res.limit, res.totalPages);
+            
         } else {
             tbody.html('<tr><td colspan="8" class="text-center">No users found</td></tr>');
+            $('#paginationInfo').text('');
+            $('#paginationControls').empty();
         }
     });
+}
+
+function renderPagination(total, page, limit, totalPages) {
+    // Show info: "Showing X to Y of Z entries"
+    let start = (page - 1) * limit + 1;
+    let end = Math.min(page * limit, total);
+    $('#paginationInfo').text(`Showing ${start} to ${end} of ${total} entries`);
+
+    let paginationHtml = '';
+
+    // Previous Button
+    let prevDisabled = page === 1 ? 'disabled' : '';
+    paginationHtml += `
+        <li class="page-item ${prevDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${page - 1}); return false;">Previous</a>
+        </li>
+    `;
+
+    // Page Numbers
+    for (let i = 1; i <= totalPages; i++) {
+        let active = i === page ? 'active' : '';
+        paginationHtml += `
+            <li class="page-item ${active}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+
+    // Next Button
+    let nextDisabled = page === totalPages ? 'disabled' : '';
+    paginationHtml += `
+        <li class="page-item ${nextDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${page + 1}); return false;">Next</a>
+        </li>
+    `;
+
+    $('#paginationControls').html(paginationHtml);
+}
+
+function changePage(newPage) {
+    let search = $('#search').val();
+    fetchUsers(search, newPage);
 }
 
 function saveUser() {
@@ -133,7 +189,7 @@ function saveUser() {
             if (res.success) {
                 modal.hide();
                 resetForm();
-                fetchUsers();
+                fetchUsers($('#search').val(), currentPage); // Stay on current page if possible, or reload
                 Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: res.message });
@@ -199,7 +255,7 @@ function deleteUser(id) {
         if (result.isConfirmed) {
             $.post('actions.php?action=delete', JSON.stringify({ id: id }), function(res) {
                 if (res.success) {
-                    fetchUsers();
+                    fetchUsers($('#search').val(), currentPage); // Reload current page
                     Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
                 } else {
                     Swal.fire('Error', res.message, 'error');

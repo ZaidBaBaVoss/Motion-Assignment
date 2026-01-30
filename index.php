@@ -51,6 +51,12 @@ if (empty($_SESSION['csrf_token'])) {
                 </tbody>
             </table>
         </div>
+        
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" class="d-flex justify-content-between align-items-center mt-3">
+            <div id="paginationInfo" class="fw-bold text-muted"></div>
+            <ul class="pagination mb-0" id="paginationControls"></ul>
+        </nav>
     </div>
 
     <!-- User Modal (Add/Edit) -->
