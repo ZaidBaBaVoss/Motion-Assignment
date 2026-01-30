@@ -134,7 +134,7 @@ function saveUser() {
                 modal.hide();
                 resetForm();
                 fetchUsers();
-                Swal.fire({ icon: 'success', title: 'Saved!', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: res.message });
             }
@@ -144,35 +144,45 @@ function saveUser() {
 
 function editUser(id) {
     // Load user data into the modal for editing.
-    $.getJSON('actions.php', { action: 'fetch_one', id: id }, function(res) {
-        if (res.success) {
-            let u = res.data;
-            $('#userId').val(u.id);
-            $('#name').val(u.name);
-            $('#email').val(u.email);
-            $('#phone').val(u.phone);
-            $(`input[name="gender"][value="${u.gender}"]`).prop('checked', true);
-            $('#removeImageFlag').val('0');
+    $.ajax({
+        url: 'actions.php',
+        type: 'GET',
+        data: { action: 'fetch_one', id: id },
+        dataType: 'json',
+        success: function(res) {
+            if (res.success) {
+                let u = res.data;
+                $('#userId').val(u.id);
+                $('#name').val(u.name);
+                $('#email').val(u.email);
+                $('#phone').val(u.phone);
+                $(`input[name="gender"][value="${u.gender}"]`).prop('checked', true);
+                $('#removeImageFlag').val('0');
 
-            if (u.profile_image) {
-                // Show existing image with option to remove it.
-                $('#currentImage').html(`
-                    <div class="position-relative d-inline-block" style="margin-top:10px;">
-                        <img src="uploads/${escapeHtml(u.profile_image)}" class="rounded" style="width: 100px; height: 100px; object-fit: cover;">
-                        <button type="button" class="btn btn-danger position-absolute top-0 start-100 translate-middle rounded-circle p-0" 
-                                style="width: 24px; height: 24px;" onclick="removeImage()">
-                            <i class="fas fa-times" style="font-size: 12px;"></i>
-                        </button>
-                    </div>
-                `);
-            } else {
-                $('#currentImage').empty();
+                if (u.profile_image) {
+                    // Show existing image with option to remove it.
+                    $('#currentImage').html(`
+                        <div class="position-relative d-inline-block" style="margin-top:10px;">
+                            <img src="uploads/${escapeHtml(u.profile_image)}" class="rounded" style="width: 100px; height: 100px; object-fit: cover;">
+                            <button type="button" class="btn btn-danger position-absolute top-0 start-100 translate-middle rounded-circle p-0" 
+                                    style="width: 24px; height: 24px;" onclick="removeImage()">
+                                <i class="fas fa-times" style="font-size: 12px;"></i>
+                            </button>
+                        </div>
+                    `);
+                } else {
+                    $('#currentImage').empty();
+                }
+
+                $('#userModalLabel').text('Edit User');
+                $('#formAlert').addClass('d-none');
+                $('.text-danger').text(''); // Clear errors
+                $('label .text-danger').text('*');
+                modal.show();
             }
-
-            $('#userModalLabel').text('Edit User');
-            $('#formAlert').addClass('d-none');
-            $('.text-danger').text(''); // Clear errors
-            modal.show();
+        },
+        error: function() {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to fetch user data' });
         }
     });
 }
@@ -180,17 +190,17 @@ function editUser(id) {
 function deleteUser(id) {
     // Confirm before nuking.
     Swal.fire({
-        title: 'Delete user?',
+        title: 'Are you sure you want to delete this user?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Delete'
+        confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('actions.php?action=delete', JSON.stringify({ id: id }), function(res) {
                 if (res.success) {
                     fetchUsers();
-                    Swal.fire('Deleted!', '', 'success');
+                    Swal.fire({ icon: 'success', title: res.message, timer: 1500, showConfirmButton: false });
                 } else {
                     Swal.fire('Error', res.message, 'error');
                 }
@@ -214,6 +224,7 @@ function resetForm() {
     $('#userModalLabel').text('Add User');
     $('#currentImage').empty();
     $('.text-danger').text('');
+    $('label .text-danger').text('*');
 }
 
 function escapeHtml(text) {

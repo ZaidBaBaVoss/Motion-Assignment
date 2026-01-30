@@ -113,7 +113,7 @@ if ($action === 'create' && $method === 'POST') {
     $stmt->bind_param("sssss", $name, $email, $phone, $gender, $imageName);
     
     if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'User created']);
+        echo json_encode(['success' => true, 'message' => 'User added successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'DB Error']);
     }
@@ -205,7 +205,7 @@ if ($action === 'update' && $method === 'POST') {
     }
 
     if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Updated successfully']);
+        echo json_encode(['success' => true, 'message' => 'User updated successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Update failed']);
     }
@@ -237,7 +237,7 @@ if ($action === 'delete' && $method === 'POST') {
     $stmt->bind_param("i", $id);
     
     if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Deleted']);
+        echo json_encode(['success' => true, 'message' => 'User deleted!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Delete failed']);
     }
